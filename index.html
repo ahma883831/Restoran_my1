@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سیستم مدیریت رستوران</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100;200;300;400;500;600;700;800;900&display=swap');
+        
+        body {
+            font-family: 'Vazirmatn', sans-serif;
+        }
+        
+        .order-status {
+            position: relative;
+        }
+        
+        .order-status::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 50%;
+            height: 100%;
+            width: 2px;
+            background-color: #e5e7eb;
+            z-index: 0;
+        }
+        
+        .status-step {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .status-step.active .status-icon {
+            background-color: #10b981;
+            color: white;
+        }
+        
+        .status-step.completed .status-icon {
+            background-color: #10b981;
+            color: white;
+        }
+        
+        .status-step.completed .status-text {
+            color: #10b981;
+            font-weight: 600;
+        }
+        
+        .menu-item:hover .item-actions {
+            opacity: 1;
+        }
+        
+        .item-actions {
+            transition: opacity 0.2s;
+            opacity: 0;
+        }
+        
+        /* Animation for real-time updates */
+        @keyframes highlight {
+            0% { background-color: rgba(16, 185, 129, 0.1); }
+            100% { background-color: transparent; }
+        }
+        
+        .updated {
+            animation: highlight 2s;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Main Container -->
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <div class="hidden md:flex md:flex-shrink-0">
+            <div class="flex flex-col w-64 bg-green-800 text-white">
+                <div class="flex items-center justify-center h-16 px-4 border-b border-green-700">
+                    <div class="flex items-center">
+                        <i class="fas fa-utensils text-2xl mr-2"></i>
+                        <span class="text-xl font-bold">رستوران سبز</span>
+                    </div>
+                </div>
+                <div class="flex flex-col flex-grow px-4 py-4 overflow-y-auto">
+                    <div class="space-y-1">
+                        <a href="#" class="flex items-center px-2 py-3 text-sm font-medium rounded-md bg-green-900 text-white">
+                            <i class="fas fa-tachometer-alt ml-2"></i>
+                            داشبورد
+                        </a>
+                        <a href="#" class="flex items-center px-2 py-3 text-sm font-medium rounded-md hover:bg-green-700 text-white">
+                            <i class="fas fa-list-alt ml-2"></i>
+                            سفارشات
+                        </a>
+                        <a href="#" class="flex items-center px-2 py-3 text-sm font-medium rounded-md hover:bg-green-700 text-white">
+                            <i class="fas fa-utensils ml-2"></i>
+                            منو
+                        </a>
+                        <a href="#" class="flex items-center px-2 py-3 text-sm font-medium rounded-md hover:bg-green-700 text-white">
+                            <i class="fas fa-users ml-2"></i>
+                            مشتریان
+                        </a>
+                        <a href="#" class="flex items-center px-2 py-3 text-sm font-medium rounded-md hover:bg-green-700 text-white">
+                            <i class="fas fa-chart-line ml-2"></i>
+                            گزارشات
+                        </a>
+                        <a href="#" class="flex items-center px-2 py-3 text-sm font-medium rounded-md hover:bg-green-700 text-white">
+                            <i class="fas fa-cog ml-2"></i>
+                            تنظیمات
+                        </a>
+                    </div>
+                    
+                    <div class="mt-auto mb-4">
+                        <div class="flex items-center px-2 py-3 text-sm font-medium rounded-md bg-green-700 text-white">
+                            <div class="relative">
+                                <img class="h-8 w-8 rounded-full" src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" alt="">
+                                <span class="absolute bottom-0 right-0 block h-2 w-2 rounded-full bg-green-400 ring-2 ring-green-700"></span>
+                            </div>
+                            <span class="mr-3">مدیر سیستم</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="flex flex-col flex-1 overflow-hidden">
+            <!-- Top Navigation -->
+            <div class="flex items-center justify-between h-16 px-4 border-b bg-white">
+                <div class="flex items-center">
+                    <button class="md:hidden text-gray-500 focus:outline-none">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h1 class="text-lg font-semibold mr-2">سفارشات امروز</h1>
+                </div>
+                
+                <div class="flex items-center">
+                    <button class="p-1 text-gray-400 rounded-full hover:text-gray-500 focus:outline-none">
+                        <i class="fas fa-bell"></i>
+                    </button>
+                    <div class="relative ml-3">
+                        <div class="flex items-center">
+                            <div class="relative">
+                                <img class="h-8 w-8 rounded-full" src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" alt="">
+                                <span class="absolute bottom-0 right-0 block h-2 w-2 rounded-full bg-green-400 ring-2 ring-white"></span>
+                            </div>
+                            <span class="mr-2 text-sm font-medium">مدیر سیستم</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Content Area -->
+            <div class="flex-1 overflow-auto p-4">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Orders List -->
+                    <div class="lg:col-span-2 space-y-4">
+                        <div class="bg-white rounded-lg shadow p-4">
+                            <div class="flex justify-between items-center mb-4">
+                                <h2 class="text-lg font-semibold">سفارشات فعال</h2>
+                                <div class="flex space-x-2">
+                                    <button class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+                                        همه
+                                    </button>
+                                    <button class="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm">
+                                        جدید
+                                    </button>
+                                    <button class="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm">
+                                        در حال آماده سازی
+                                    </button>
+                                    <button class="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm">
+                                        آماده تحویل
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="space-y-3">
+                                <!-- Order Item -->
+                                <div class="border rounded-lg p-4 hover:shadow-md transition-shadow updated" id="order-1001">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <div class="flex items-center">
+                                                <span class="font-medium">سفارش #1001</span>
+                                                <span class="bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded-full mr-2">جدید</span>
+                                            </div>
+                                            <div class="text-sm text-gray-500 mt-1">میز شماره 5 - 2 نفر</div>
+                                            <div class="text-sm mt-2">
+                                                <span class="font-medium">زمان ثبت:</span>
+                                                <span class="text-gray-600">10:25 AM</span>
+                                            </div>
+                                        </div>
+                                        <div class="flex space-x-2">
+                                            <button class="p-2 text-green-600 hover:bg-green-50 rounded-full" onclick="editOrder('1001')">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="p-2 text-blue-600 hover:bg-blue-50 rounded-full" onclick="viewOrderDetails('1001')">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mt-3 pt-3 border-t">
+                                        <div class="order-status flex justify-between relative">
+                                            <div class="status-step active text-center">
+                                                <div class="status-icon mx-auto w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                                                    <i class="fas fa-clipboard-list text-sm"></i>
+                                                </div>
+                                                <div class="status-text mt-1 text-xs">ثبت سفارش</div>
+                                            </div>
+                                            <div class="status-step text-center">
+                                                <div class="status-icon mx-auto w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                                                    <i class="fas fa-utensils text-sm"></i>
+                                                </div>
+                                                <div class="status-text mt-1 text-xs">آماده سازی</div>
+                                            </div>
+                                            <div class="status-step text-center">
+                                                <div class="status-icon mx-auto w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                                                    <i class="fas fa-check text-sm"></i>
+                                                </div>
+                                                <div class="status-text mt-1 text-xs">آماده تحویل</div>
+                                            </div>
+                                            <div class="status-step text-center">
+                                                <div class="status-icon mx-auto w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                                                    <i class="fas fa-money-bill-wave text-sm"></i>
+                                                </div>
+                                                <div class="status-text mt-1 text-xs">پرداخت شده</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Order Item -->
+                                <div class="border rounded-lg p-4 hover:shadow-md transition-shadow" id="order-1002">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <div class="flex items-center">
+                                                <span class="font-medium">سفارش #1002</span>
+                                                <span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded-full mr-2">در حال آماده سازی</span>
+                                            </div>
+                                            <div class="text-sm text-gray-500 mt-1">تحویل بیرون بر - علی محمدی</div>
+                                            <div class="text-sm mt-2">
+                                                <span class="font-medium">زمان ثبت:</span>
+                                                <span class="text-gray-600">10:05 AM</span>
+                                            </div>
+                                        </div>
+                                        <div class="flex space-x-2">
+                                            <button class="p-2 text-green-600 hover:bg-green-50 rounded-full">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="p-2 text-blue-600 hover:bg-blue-50 rounded-full">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mt-3 pt-3 border-t">
+                                        <div class="order-status flex justify-between relative">
+                                            <div class="status-step completed text-center">
+                                                <div class="status-icon mx-auto w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                                                    <i class="fas fa-clipboard-list text-sm"></i>
+                                                </div>
+                                                <div class="status-text mt-1 text-xs">ثبت سفارش</div>
+                                            </div>
+                                            <div class="status-step active text-center">
+                                                <div class="status-icon mx-auto w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                                                    <i class="fas fa-utensils text-sm"></i>
+                                                </div>
+                                                <div class="status-text mt-1 text-xs">آماده سازی</div>
+                                            </div>
+                                            <div class="status-step text-center">
+                                                <div class="status-icon mx-auto w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                                                    <i class="fas fa-check text-sm"></i>
+                                                </div>
+                                                <div class="status-text mt-1 text-xs">آماده تحویل</div>
+                                            </div>
+                                            <div class="status-step text-center">
+                                                <div class="status-icon mx-auto w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                                                    <i class="fas fa-money-bill-wave text-sm"></i>
+                                                </div>
+                                                <div class="status-text mt-1 text-xs">پرداخت شده</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Order Item -->
+                                <div class="border rounded-lg p-4 hover:shadow-md transition-shadow" id="order-1003">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <div class="flex items-center">
+                                                <span class="font-medium">سفارش #1003</span>
+                                                <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full mr-2">آماده تحویل</span>
+                                            </div>
+                                            <div class="text-sm text-gray-500 mt-1">میز شماره 2 - 4 نفر</div>
+                                            <div class="text-sm mt-2">
+                                                <span class="font-medium">زمان ثبت:</span>
+                                                <span class="text-gray-600">09:45 AM</span>
+                                            </div>
+                                        </div>
+                                        <div class="flex space-x-2">
+                                            <button class="p-2 text-green-600 hover:bg-green-50 rounded-full">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="p-2 text-blue-600 hover:bg-blue-50 rounded-full">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mt-3 pt-3 border-t">
+                                        <div class="order-status flex justify-between relative">
+                                            <div class="status-step completed text-center">
+                                                <div class="status-icon mx-auto w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                                                    <i class="fas fa-clipboard-list text-sm"></i>
+                                                </div>
+                                                <div class="status-text mt-1 text-xs">ثبت سفارش</div>
+                                            </div>
+                                            <div class="status-step completed text-center">
+                                                <div class="status-icon mx-auto w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                                                    <i class="fas fa-utensils text-sm"></i>
+                                                </div>
+                                                <div class="status-text mt-1 text-xs">آماده سازی</div>
+                                            </div>
+                                            <div class="status-step active text-center">
+                                                <div class="status-icon mx-auto w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                                                    <i class="fas fa-check text-sm"></i>
+                                                </div>
+                                                <div class="status-text mt-1 text-xs">آماده تحویل</div>
+                                            </div>
+                                            <div class="status-step text-center">
+                                                <div class="status-icon mx-auto w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                                                    <i class="fas fa-money-bill-wave text-sm"></i>
+                                                </div>
+                                                <div class="status-text mt-1 text-xs">پرداخت شده</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Order Details / QR Section -->
+                    <div class="space-y-4">
+                        <!-- QR Code Section -->
+                        <div class="bg-white rounded-lg shadow p-4">
+                            <h2 class="text-lg font-semibold mb-4">اسکن QR کد</h2>
+                            <div class="flex flex-col items-center">
+                                <div id="qrcode" class="mb-4 p-2 bg-white border rounded"></div>
+                                <p class="text-sm text-gray-600 text-center">مشتریان می‌توانند با اسکن این کد، منوی رستوران را مشاهده و سفارش خود را ثبت کنند</p>
+                                <button class="mt-3 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition" onclick="generateNewQR()">
+                                    <i class="fas fa-sync-alt ml-2"></i>
+                                    ایجاد QR کد جدید
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Order Details -->
+                        <div class="bg-white rounded-lg shadow p-4" id="orderDetailsSection">
+                            <div class="flex justify-between items-center mb-4">
+                                <h2 class="text-lg font-semibold">جزئیات سفارش</h2>
+                                <button class="text-gray-500 hover:text-gray-700" onclick="closeOrderDetails()">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            
+                            <div id="emptyOrderDetails" class="text-center py-8">
+                                <i class="fas fa-clipboard-list text-4xl text-gray-300 mb-3"></i>
+                                <p class="text-gray-500">برای مشاهده جزئیات، یک سفارش را انتخاب کنید</p>
+                            </div>
+                            
+                            <div id="orderDetailsContent" class="hidden">
+                                <div class="mb-4">
+                                    <h3 class="font-medium">سفارش #<span id="orderId">1001</span></h3>
+                                    <div class="flex items-center mt-1">
+                                        <span class="bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded-full">جدید</span>
+                                        <span class="text-sm text-gray-600 mr-2">میز شماره 5 - 2 نفر</span>
+                                    </div>
+                                    <div class="text-sm text-gray-500 mt-2">
+                                        <div><span class="font-medium">زمان ثبت:</span> <span>10:25 AM</span></div>
+                                        <div><span class="font-medium">پیش‌بینی آماده‌سازی:</span> <span>30 دقیقه</span></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="border-t pt-3">
+                                    <h4 class="font-medium mb-2">محصولات سفارش داده شده</h4>
+                                    <div class="space-y-3">
+                                        <div class="flex justify-between items-center">
+                                            <div>
+                                                <span class="font-medium">1x</span>
+                                                <span class="mr-2">پیتزا مخصوص</span>
+                                            </div>
+                                            <div class="text-gray-600">120,000 تومان</div>
+                                        </div>
+                                        <div class="flex justify-between items-center">
+                                            <div>
+                                                <span class="font-medium">2x</span>
+                                                <span class="mr-2">نوشابه خانواده</span>
+                                            </div>
+                                            <div class="text-gray-600">40,000 تومان</div>
+                                        </div>
+                                        <div class="flex justify-between items-center">
+                                            <div>
+                                                <span class="font-medium">1x</span>
+                                                <span class="mr-2">سالاد سزار</span>
+                                            </div>
+                                            <div class="text-gray-600">45,000 تومان</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="border-t mt-3 pt-3">
+                                        <div class="flex justify-between font-medium">
+                                            <span>جمع کل:</span>
+                                            <span>205,000 تومان</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-4 pt-3 border-t">
+                                    <h4 class="font-medium mb-2">توضیحات مشتری</h4>
+                                    <p class="text-sm text-gray-600 bg-gray-50 p-2 rounded">پیتزا بدون قارچ و با پنیر اضافه باشد</p>
+                                </div>
+                                
+                                <div class="mt-6 flex space-x-2">
+                                    <button class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition" onclick="updateOrderStatus('1001', 'preparing')">
+                                        <i class="fas fa-utensils ml-2"></i>
+                                        شروع آماده‌سازی
+                                    </button>
+                                    <button class="px-3 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition" onclick="cancelOrder('1001')">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Edit Order Modal -->
+    <div id="editOrderModal" class="fixed inset-0 z-50 flex items-center justify-center hidden bg-black bg-opacity-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div class="flex justify-between items-center p-4 border-b">
+                <h3 class="text-lg font-semibold">ویرایش سفارش #1001</h3>
+                <button class="text-gray-500 hover:text-gray-700" onclick="closeEditModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="p-4">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">وضعیت سفارش</label>
+                    <select class="w-full border rounded-lg p-2">
+                        <option value="new">جدید</option>
+                        <option value="preparing">در حال آماده‌سازی</option>
+                        <option value="ready">آماده تحویل</option>
+                        <option value="completed">تکمیل شده</option>
+                        <option value="cancelled">لغو شده</option>
+                    </select>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">میز / نوع سفارش</label>
+                    <input type="text" class="w-full border rounded-lg p-2" value="میز شماره 5 - 2 نفر">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">محصولات</label>
+                    <div class="border rounded-lg p-2 max-h-40 overflow-y-auto">
+                        <div class="flex justify-between items-center py-2 border-b">
+                            <div>
+                                <span class="font-medium">1x</span>
+                                <span class="mr-2">پیتزا مخصوص</span>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button class="text-green-600 hover:text-green-800">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="text-red-600 hover:text-red-800">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b">
+                            <div>
+                                <span class="font-medium">2x</span>
+                                <span class="mr-2">نوشابه خانواده</span>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button class="text-green-600 hover:text-green-800">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="text-red-600 hover:text-red-800">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center py-2">
+                            <div>
+                                <span class="font-medium">1x</span>
+                                <span class="mr-2">سالاد سزار</span>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button class="text-green-600 hover:text-green-800">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="text-red-600 hover:text-red-800">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">توضیحات</label>
+                    <textarea class="w-full border rounded-lg p-2" rows="2">پیتزا بدون قارچ و با پنیر اضافه باشد</textarea>
+                </div>
+            </div>
+            
+            <div class="p-4 border-t flex justify-end space-x-2">
+                <button class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition" onclick="closeEditModal()">
+                    انصراف
+                </button>
+                <button class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition" onclick="saveOrderChanges()">
+                    ذخیره تغییرات
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Customer Order View (Simulated) -->
+    <div id="customerOrderView" class="fixed inset-0 z-50 flex items-center justify-center hidden bg-black bg-opacity-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-sm mx-4">
+            <div class="p-4 border-b">
+                <h3 class="text-lg font-semibold text-center">سفارش شما</h3>
+            </div>
+            
+            <div class="p-4">
+                <div class="text-center mb-4">
+                    <i class="fas fa-check-circle text-5xl text-green-500 mb-3"></i>
+                    <h4 class="font-medium text-lg">سفارش شما با موفقیت ثبت شد!</h4>
+                    <p class="text-sm text-gray-500 mt-1">شماره سفارش: #1001</p>
+                </div>
+                
+                <div class="border rounded-lg p-3 mb-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="font-medium">وضعیت سفارش:</span>
+                        <span class="bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded-full">در حال آماده‌سازی</span>
+                    </div>
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-gray-600">پیش‌بینی آماده‌سازی:</span>
+                        <span>15 دقیقه دیگر</span>
+                    </div>
+                </div>
+                
+                <div class="border rounded-lg p-3 mb-4">
+                    <h5 class="font-medium mb-2">جزئیات سفارش</h5>
+                    <div class="space-y-2">
+                        <div class="flex justify-between">
+                            <span>1x پیتزا مخصوص</span>
+                            <span>120,000 تومان</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>2x نوشابه خانواده</span>
+                            <span>40,000 تومان</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>1x سالاد سزار</span>
+                            <span>45,000 تومان</span>
+                        </div>
+                    </div>
+                    <div class="border-t mt-2 pt-2">
+                        <div class="flex justify-between font-medium">
+                            <span>جمع کل:</span>
+                            <span>205,000 تومان</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-center">
+                    <button class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition" onclick="closeCustomerView()">
+                        متوجه شدم
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Initialize QR Code
+        document.addEventListener('DOMContentLoaded', function() {
+            generateQRCode();
+            
+            // Simulate real-time updates
+            setInterval(simulateRealTimeUpdates, 10000);
+        });
+        
+        function generateQRCode() {
+            // In a real app, this would be a unique URL for the restaurant's ordering page
+            const qrUrl = 'https://restaurant-order-system.com/menu/restaurant-id-123';
+            new QRCode(document.getElementById("qrcode"), {
+                text: qrUrl,
+                width: 150,
+                height: 150,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+        }
+        
+        function generateNewQR() {
+            document.getElementById("qrcode").innerHTML = "";
+            generateQRCode();
+            Swal.fire({
+                icon: 'success',
+                title: 'QR کد جدید ایجاد شد',
+                text: 'مشتریان می‌توانند از این QR کد جدید برای سفارش استفاده کنند',
+                confirmButtonText: 'متوجه شدم'
+            });
+        }
+        
+        function viewOrderDetails(orderId) {
+            document.getElementById('emptyOrderDetails').classList.add('hidden');
+            document.getElementById('orderDetailsContent').classList.remove('hidden');
+            document.getElementById('orderId').textContent = orderId;
+            
+            // Scroll to details section on mobile
+            if (window.innerWidth < 1024) {
+                document.getElementById('orderDetailsSection').scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+        
+        function closeOrderDetails() {
+            document.getElementById('emptyOrderDetails').classList.remove('hidden');
+            document.getElementById('orderDetailsContent').classList.add('hidden');
+        }
+        
+        function editOrder(orderId) {
+            document.getElementById('editOrderModal').classList.remove('hidden');
+        }
+        
+        function closeEditModal() {
+            document.getElementById('editOrderModal').classList.add('hidden');
+        }
+        
+        function saveOrderChanges() {
+            closeEditModal();
+            Swal.fire({
+                icon: 'success',
+                title: 'تغییرات ذخیره شد',
+                showConfirmButton: false,
+                timer: 1500
+            });
+        }
+        
+        function updateOrderStatus(orderId, status) {
+            let statusText = '';
+            let statusClass = '';
+            
+            switch(status) {
+                case 'preparing':
+                    statusText = 'در حال آماده‌سازی';
+                    statusClass = 'bg-yellow-100 text-yellow-800';
+                    break;
+                case 'ready':
+                    statusText = 'آماده تحویل';
+                    statusClass = 'bg-blue-100 text-blue-800';
+                    break;
+                case 'completed':
+                    statusText = 'تکمیل شده';
+                    statusClass = 'bg-green-100 text-green-800';
+                    break;
+            }
+            
+            // Update the order status in the list
+            const orderBadge = document.querySelector(`#order-${orderId} .rounded-full`);
+            if (orderBadge) {
+                orderBadge.className = `${statusClass} text-xs px-2 py-0.5 rounded-full mr-2`;
+                orderBadge.textContent = statusText;
+            }
+            
+            // Update the status steps
+            const orderElement = document.getElementById(`order-${orderId}`);
+            if (orderElement) {
+                const steps = orderElement.querySelectorAll('.status-step');
+                
+                steps.forEach(step => step.classList.remove('active', 'completed'));
+                
+                if (status === 'preparing') {
+                    steps[0].classList.add('completed');
+                    steps[1].classList.add('active');
+                } else if (status === 'ready') {
+                    steps[0].classList.add('completed');
+                    steps[1].classList.add('completed');
+                    steps[2].classList.add('active');
+                } else if (status === 'completed') {
+                    steps[0].classList.add('completed');
+                    steps[1].classList.add('completed');
+                    steps[2].classList.add('completed');
+                    steps[3].classList.add('active');
+                }
+                
+                // Highlight the updated order
+                orderElement.classList.add('updated');
+            }
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'وضعیت سفارش به روز شد',
+                showConfirmButton: false,
+                timer: 1500
+            });
+        }
+        
+        function cancelOrder(orderId) {
+            Swal.fire({
+                title: 'آیا از لغو این سفارش مطمئن هستید؟',
+                text: "این عمل قابل بازگشت نیست!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'بله، لغو شود',
+                cancelButtonText: 'انصراف'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const orderElement = document.getElementById(`order-${orderId}`);
+                    if (orderElement) {
+                        orderElement.classList.add('hidden');
+                    }
+                    
+                    Swal.fire(
+                        'لغو شد!',
+                        'سفارش با موفقیت لغو شد.',
+                        'success'
+                    );
+                }
+            });
+        }
+        
+        function showCustomerView() {
+            document.getElementById('customerOrderView').classList.remove('hidden');
+        }
+        
+        function closeCustomerView() {
+            document.getElementById('customerOrderView').classList.add('hidden');
+        }
+        
+        // Simulate real-time updates from server
+        function simulateRealTimeUpdates() {
+            // Randomly select an order to update
+            const orders = ['order-1001', 'order-1002', 'order-1003'];
+            const randomOrder = orders[Math.floor(Math.random() * orders.length)];
+            const orderElement = document.getElementById(randomOrder);
+            
+            if (orderElement) {
+                // Add highlight animation
+                orderElement.classList.add('updated');
+                
+                // In a real app, this would be a WebSocket or SSE update from the server
+                console.log(`Simulating real-time update for ${randomOrder}`);
+            }
+        }
+        
+        // In a real application, you would use WebSocket for real-time updates
+        function setupWebSocket() {
+            /*
+            const socket = new WebSocket('wss://your-restaurant-server.com/realtime');
+            
+            socket.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                
+                // Update the UI based on the received data
+                if (data.type === 'order_update') {
+                    const orderElement = document.getElementById(`order-${data.orderId}`);
+                    if (orderElement) {
+                        // Update order status
+                        orderElement.classList.add('updated');
+                        
+                        // Update specific elements based on the changes
+                        // ...
+                    }
+                }
+            };
+            */
+        }
+    </script>
+</body>
+</html>
